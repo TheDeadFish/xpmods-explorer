@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <string.h>
 #include <conio.h>
+#include "shutdown.cc"
 
 extern HWND v_hwndDesktop;
 extern HWND v_hwndTray;
@@ -9,7 +10,8 @@ enum {
 	GHID_SNAPBOTT = 513,
 	GHID_SNAPLEFT = 514,
 	GHID_SNAPRGHT = 515,
-	GHID_TOPMOST = 516 };
+	GHID_TOPMOST = 516,
+	GHID_SHTDOWN = 517 };
 	
 static
 int GetWindowBorders(LONG lStyle, DWORD dwExStyle) 
@@ -102,6 +104,8 @@ void __thiscall HandleGlobalHotkey_hook(void* This, WPARAM wParam)
 {
 	if((wParam >= GHID_SNAPTOPP)&&(wParam <= GHID_TOPMOST))
 		HandleWin7Hotkey(wParam);
+	if(wParam == GHID_SHTDOWN)
+		HandleShutdownKey();
 	return HandleGlobalHotkey(This, wParam);
 }
 
@@ -123,5 +127,6 @@ const DWORD GlobalKeylist[] =
 	  MAKELONG(VK_DOWN,MOD_WIN),					// 513
 	  MAKELONG(VK_LEFT,MOD_WIN),  					// 514
 	  MAKELONG(VK_RIGHT,MOD_WIN),					// 515
-	  MAKELONG(VK_SPACE,MOD_WIN)					// 516
+	  MAKELONG(VK_SPACE,MOD_WIN),				    // 516
+	  MAKELONG(VK_SNAPSHOT,MOD_CONTROL|MOD_ALT)		// 516
 };
