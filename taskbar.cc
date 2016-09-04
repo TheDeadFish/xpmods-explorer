@@ -2,7 +2,7 @@
 #include <commctrl.h>
 #include "callpatch.cpp"
 #include "tebpeb.h"
-#define DrawText_Offset (0x7748DE64-0x77420000)
+#include "explorer.h"
 #define DrawText_MinLen 10
 #include <conio.h>
 
@@ -45,6 +45,11 @@ DWORD WINAPI SHCreateDesktop(void* arg);
 extern "C"
 DWORD WINAPI SHCreateDesktop_hook(void* arg)
 {
+	size_t base = (size_t)LoadLibrary(
+		"stobject.dll") - Stobject_Base;
+	MEMNOP(VolNotify_NopB+base, VolNotify_NopE+base);
+	CALLPATCH(VolNotify_Cp1+base, Volume_Timer+base);
+
 	char* comctl = NULL;
 	NtModuleList modList;
 	while(LDR_DATA_TABLE_ENTRY* mod = modList.next()) {
