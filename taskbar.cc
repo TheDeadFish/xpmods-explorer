@@ -40,12 +40,12 @@ int WINAPI DrawText_hook(HDC hDC, LPCWSTR lpchText,
 	return DrawTextW(hDC, lpchText, nCount, lpRect, uFormat);
 }
 
-extern "C" __declspec(dllimport)
+extern "C"
 DWORD WINAPI SHCreateDesktop(void* arg);
 extern "C"
 DWORD WINAPI SHCreateDesktop_hook(void* arg)
 {
-	size_t base = (size_t)LoadLibrary(
+	size_t base = (size_t)LoadLibraryA(
 		"stobject.dll") - Stobject_Base;
 	MEMNOP(VolNotify_NopB+base, VolNotify_NopE+base);
 	CALLPATCH(VolNotify_Cp1+base, Volume_Timer+base);

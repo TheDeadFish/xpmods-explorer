@@ -1,6 +1,5 @@
 // taskbar
-IMPORTHOOK(SHELL32.dll;#200, _SHCreateDesktop_hook@4)
-IMPORTDEF(SHELL32.dll;#200, __imp__SHCreateDesktop@4)
+CALLHOOK(0x0100FA29, _SHCreateDesktop@4)
 FUNCREPL(0x010034B9, 0x01003529, _CTaskBand___UpdateItemText)
 SYMBOL(0x01001F7B, _CTaskBand___GetItemTitle)
 
@@ -8,8 +7,8 @@ SYMBOL(0x01001F7B, _CTaskBand___GetItemTitle)
 SYMBOL(0x0104608C, _v_hwndDesktop)
 SYMBOL(0x01046094, _v_hwndTray)
 FREE(0x01010DD4, 0x01010E04)
-MEMPATCH(0x01010DA0, _GlobalKeylist)
-MEMPATCH(0x01010DC9, _GlobalKeylist+72)
+PATCH_PTR(0x01010DA0, _GlobalKeylist)
+PATCH_PTR(0x01010DC9, _GlobalKeylist+72)
 CALLHOOK(0x0101F221, _HandleGlobalHotkey)
 
 // temp shit
