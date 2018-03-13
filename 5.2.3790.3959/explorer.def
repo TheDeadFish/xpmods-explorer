@@ -2,6 +2,7 @@
 CALLHOOK(0x0100FA29, _SHCreateDesktop@4)
 FUNCREPL(0x010034B9, 0x01003529, _CTaskBand___UpdateItemText)
 SYMBOL(0x01001F7B, _CTaskBand___GetItemTitle)
+SYMBOL(0X104617C, _g_hinstCC)
 
 // hotkeys
 SYMBOL(0x0104608C, _v_hwndDesktop)

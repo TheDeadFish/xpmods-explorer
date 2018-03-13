@@ -1,6 +1,6 @@
-#include <windows.h>
+#include "stdshit.h"
+#include "apihook.h"
 #include <commctrl.h>
-#include "callpatch.cpp"
 #include "tebpeb.h"
 #include "explorer.h"
 #define DrawText_MinLen 10
@@ -29,10 +29,17 @@ BOOL drawPath(HDC hdc, LPCWSTR lpchText, LPRECT lpRect)
 		0x0824 | DT_RIGHT);
 }
 
+PVOID drawTextFunc; PVOID drawTextCall;
+int WINAPI DrawText_hook1( HDC hDC, LPCTSTR lpchText,
+ int nCount, LPRECT lpRect, UINT uFormat ) {
+	drawTextCall = __builtin_return_address(0);
+	return 0; }
+
 int WINAPI DrawText_hook(HDC hDC, LPCWSTR lpchText,
 	int nCount, LPRECT lpRect, UINT uFormat)
 {
-	if(uFormat == 0x8824) {
+	if((drawTextCall == __builtin_return_address(0)) 
+	&&(uFormat == 0x8824)) {
 		for(int i = 0; (i < 10) && lpchText[i]; i++)
 		if((lpchText[i] == ':')&&(lpchText[i+1] == '\\'))
 			return drawPath(hDC, &lpchText[i-1], lpRect);
@@ -40,23 +47,36 @@ int WINAPI DrawText_hook(HDC hDC, LPCWSTR lpchText,
 	return DrawTextW(hDC, lpchText, nCount, lpRect, uFormat);
 }
 
+extern PVOID g_hinstCC;
+
 extern "C"
 DWORD WINAPI SHCreateDesktop(void* arg);
 extern "C"
 DWORD WINAPI SHCreateDesktop_hook(void* arg)
 {
-	size_t base = (size_t)LoadLibraryA(
-		"stobject.dll") - Stobject_Base;
-	MEMNOP(VolNotify_NopB+base, VolNotify_NopE+base);
-	CALLPATCH(VolNotify_Cp1+base, Volume_Timer+base);
+	//size_t base = (size_t)LoadLibraryA(
+	//	"stobject.dll") - Stobject_Base;
+	//MEMNOP(VolNotify_NopB+base, VolNotify_NopE+base);
+	//CALLPATCH(VolNotify_Cp1+base, Volume_Timer+base);
 
-	char* comctl = NULL;
-	NtModuleList modList;
-	while(LDR_DATA_TABLE_ENTRY* mod = modList.next()) {
-		if(wcsstr(mod->FullDllName.Buffer, L"6.0.3790.3959")) {
-			comctl = (char*)mod->DllBase; break; }}
-	if(comctl != NULL)
-		callPatch(comctl+DrawText_Offset, (void*)&DrawText_hook);
+	// register hook
+	importDiscr id; id.fromBase(g_hinstCC);
+	id.setFunc("user32.dll", "DrawTextW", 
+		&DrawText_hook1, &drawTextFunc);
+
+	// create dummy toolbar
+	HWND hTool = CreateWindowExW(0, TOOLBARCLASSNAMEW, NULL, WS_VISIBLE, 
+		0, 0, 0, 0,	0, (HMENU)0, GetModuleHandle(NULL), NULL);
+	SendMessageW(hTool, TB_BUTTONSTRUCTSIZE,
+		(WPARAM)sizeof(TBBUTTON), 0);
+	TBBUTTON tbb = {0, 100, TBSTATE_ENABLED,
+		TBSTYLE_BUTTON, {}, 0, (INT_PTR)TOOLBARCLASSNAMEW};
+	SendMessageW(hTool, TB_ADDBUTTONSW, 1, (LPARAM)&tbb);
+	SendMessageW(hTool, WM_PAINT, 0, 0);
+	DestroyWindow(hTool);
+	id.setFunc("user32.dll", 
+		"DrawTextW", &DrawText_hook, 0);
+		
 	return SHCreateDesktop(arg);
 }
 
