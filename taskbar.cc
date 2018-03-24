@@ -5,6 +5,7 @@
 #include "explorer.h"
 #define DrawText_MinLen 10
 #include <conio.h>
+#include <shlwapi.h>
 
 BOOL drawPath(HDC hdc, LPCWSTR lpchText, LPRECT lpRect)
 {
@@ -29,17 +30,12 @@ BOOL drawPath(HDC hdc, LPCWSTR lpchText, LPRECT lpRect)
 		0x0824 | DT_RIGHT);
 }
 
-PVOID drawTextFunc; PVOID drawTextCall;
-int WINAPI DrawText_hook1( HDC hDC, LPCTSTR lpchText,
- int nCount, LPRECT lpRect, UINT uFormat ) {
-	drawTextCall = __builtin_return_address(0);
-	return 0; }
-
+PVOID drawTextCall;
 int WINAPI DrawText_hook(HDC hDC, LPCWSTR lpchText,
 	int nCount, LPRECT lpRect, UINT uFormat)
 {
 	if((drawTextCall == __builtin_return_address(0)) 
-	&&(uFormat == 0x8824)) {
+	&&(!(~uFormat & 0x8824))) {
 		for(int i = 0; (i < 10) && lpchText[i]; i++)
 		if((lpchText[i] == ':')&&(lpchText[i+1] == '\\'))
 			return drawPath(hDC, &lpchText[i-1], lpRect);
@@ -48,36 +44,26 @@ int WINAPI DrawText_hook(HDC hDC, LPCWSTR lpchText,
 }
 
 extern PVOID g_hinstCC;
+int WINAPI DrawText_hook1( HDC hDC, LPCTSTR lpchText,
+ int nCount, LPRECT lpRect, UINT uFormat ) {
+	if(!(~uFormat & 0x8824)) {
+		drawTextCall = __builtin_return_address(0);
+		importDiscr id; id.fromBase(g_hinstCC);
+		id.setFunc("user32.dll", "DrawTextW",
+			&DrawText_hook, 0);
+	}
+	return DrawTextW(hDC, lpchText, nCount, lpRect, uFormat);
+}
 
-extern "C"
-DWORD WINAPI SHCreateDesktop(void* arg);
-extern "C"
-DWORD WINAPI SHCreateDesktop_hook(void* arg)
+extern "C" BOOL WINAPI SHCreateThread_hook(
+	LPTHREAD_START_ROUTINE a, void* b, 
+	DWORD c, LPTHREAD_START_ROUTINE d)
 {
-	//size_t base = (size_t)LoadLibraryA(
-	//	"stobject.dll") - Stobject_Base;
-	//MEMNOP(VolNotify_NopB+base, VolNotify_NopE+base);
-	//CALLPATCH(VolNotify_Cp1+base, Volume_Timer+base);
-
-	// register hook
 	importDiscr id; id.fromBase(g_hinstCC);
-	id.setFunc("user32.dll", "DrawTextW", 
-		&DrawText_hook1, &drawTextFunc);
+	id.setFunc("user32.dll", "DrawTextW",
+		&DrawText_hook1, 0);
 
-	// create dummy toolbar
-	HWND hTool = CreateWindowExW(0, TOOLBARCLASSNAMEW, NULL, WS_VISIBLE, 
-		0, 0, 0, 0,	0, (HMENU)0, GetModuleHandle(NULL), NULL);
-	SendMessageW(hTool, TB_BUTTONSTRUCTSIZE,
-		(WPARAM)sizeof(TBBUTTON), 0);
-	TBBUTTON tbb = {0, 100, TBSTATE_ENABLED,
-		TBSTYLE_BUTTON, {}, 0, (INT_PTR)TOOLBARCLASSNAMEW};
-	SendMessageW(hTool, TB_ADDBUTTONSW, 1, (LPARAM)&tbb);
-	SendMessageW(hTool, WM_PAINT, 0, 0);
-	DestroyWindow(hTool);
-	id.setFunc("user32.dll", 
-		"DrawTextW", &DrawText_hook, 0);
-		
-	return SHCreateDesktop(arg);
+	return SHCreateThread(a, b, c, d);
 }
 
 extern "C"
@@ -90,5 +76,6 @@ int __thiscall CTaskBand___UpdateItemText(void *This, int iButton)
 	TBBUTTONINFOW tbi; tbi.cbSize = sizeof(tbi);
 	tbi.dwMask = 0x80000002; tbi.pszText = pString;
 	CTaskBand___GetItemTitle(This, iButton, pString, MAX_PATH, 0);
-	SendMessageW(((HWND*)This)[15], 0x440, iButton, (LPARAM)&tbi);
+	SendMessageW(CTASKBAND_HTOOLBAR(This), 
+		0x440, iButton, (LPARAM)&tbi);
 }
