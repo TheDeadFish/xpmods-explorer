@@ -97,16 +97,34 @@ void WINAPI HandleWin7Hotkey(WPARAM wParam)
 	MoveWindow(hwnd, left, topp, width, height, TRUE);
 }
 
+
+
+
+
+#if _WIN64 
+extern "C"
+void __thiscall HandleGlobalHotkey(void* This, WPARAM wParam, LPARAM lParam);
+extern "C"
+void __thiscall HandleGlobalHotkey_hook(void* This, WPARAM wParam, LPARAM lParam)
+#else
 extern "C"
 void __thiscall HandleGlobalHotkey(void* This, WPARAM wParam);
 extern "C"
 void __thiscall HandleGlobalHotkey_hook(void* This, WPARAM wParam)
+#endif
+
 {
-	if((wParam >= GHID_SNAPTOPP)&&(wParam <= GHID_TOPMOST))
-		HandleWin7Hotkey(wParam);
-	if(wParam == GHID_SHTDOWN)
-		HandleShutdownKey();
+	if((wParam >= GHID_SNAPTOPP)&&(wParam <= GHID_TOPMOST)) {
+		HandleWin7Hotkey(wParam); return; }
+	if(wParam == GHID_SHTDOWN) {
+		HandleShutdownKey(); return; }
+		
+#if _WIN64 
+	return HandleGlobalHotkey(This, wParam, lParam);
+#else	
 	return HandleGlobalHotkey(This, wParam);
+#endif
+	
 }
 
 extern const DWORD GlobalKeylist[];
